@@ -35,7 +35,7 @@ class OpenCvService:
         retval, buffer = cv2.imencode('.jpg', frame)
         
         if self.saveNextFrame:
-            path = os.path.abspath(self.calibrationPath + '/' + self.calibrationId + '/' + str(self.calibrationFrameId) + '.jpg')
+            path = os.path.abspath(self.calibrationPath + '/calibration_' + self.calibrationId + '/' + str(self.calibrationFrameId) + '.jpg')
             cv2.imwrite(path, frame)
             self.saveNextFrame = False
             print('> OPENCV: Frame saved under', path)
@@ -86,7 +86,7 @@ class OpenCvService:
         self.calibrationClient = client
         self.calibrationFrameId = 0
         self.calibrationId = str(uuid.uuid4())
-        os.makedirs(os.path.abspath(self.calibrationPath + '/' + self.calibrationId))
+        os.makedirs(os.path.abspath(self.calibrationPath + '/calibration_' + self.calibrationId))
         
     def calibrationSnapshot(self):
         print('> OPENCV: In calibration context, the next frame will be saved!')
