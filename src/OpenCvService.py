@@ -73,7 +73,8 @@ class OpenCvService:
         currentThread = threading.currentThread()
         print('OPENCV: Live video ', currentThread.getName(), 'started')
         while getattr(currentThread, "doRun", True):
-            self.webSocketService.send(self.liveVideoClient, 'frame', self.takePicture())
+            if not self.webSocketService.send(self.liveVideoClient, 'frame', self.takePicture()):
+                setattr(currentThread, "doRun", False)
         print('OPENCV: Live video ', currentThread.getName(), 'stopped')
 
     def startLiveVideo(self, ws, client):

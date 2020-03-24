@@ -60,7 +60,10 @@ class WebSocketServer:
             
 
     def send(self, client, responseType, data = None):
+        if not client['handler'].keep_alive:
+            return False
         self.server.send_message(client, json.dumps({'responseType': responseType, 'data': data}))
+        return True
 
     def start(self):
         self.server.run_forever()
