@@ -15,6 +15,7 @@ class OpenCvService:
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.capture.set(cv2.CAP_PROP_FPS, 5)
         self.dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
+        self.by4dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
         self.board = cv2.aruco.CharucoBoard_create(7, 5, 1, .8, self.dict)
         self.liveVideoThreads = []
         self.saveNextFrame = False
@@ -30,10 +31,22 @@ class OpenCvService:
         parameters = cv2.aruco.DetectorParameters_create()
         #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
+        formatedCorners = None
+        formatedIds = None
         if self.markers:
-            corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame, self.dict, parameters=parameters)
+            corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame, self.by4dict, parameters=parameters)
             cv2.aruco.drawDetectedMarkers(frame, corners)
-        
+            formatedIds = []
+            if ids is not None:
+                for tag in ids:
+                    formatedIds.append(int(tag[0]))
+            formatedCorners = []
+            if corners != None:
+                for tag in corners:
+                    formatedCorner = []
+                    for coordinate in tag[0]:
+                        formatedCorner.append([int(coordinate[0]), int(coordinate[1])])
+                    formatedCorners.append(formatedCorner)
         retval, buffer = cv2.imencode('.jpg', frame)
         
         data = "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
@@ -54,7 +67,7 @@ class OpenCvService:
             }
             self.webSocketService.send(self.calibrationClient, 'calibrationSnapshot', snapshotObject)
         
-        return data
+        return [ data, [formatedCorners, formatedIds] ]
     
     def liveVideoLoop(self):
         currentThread = threading.currentThread()
