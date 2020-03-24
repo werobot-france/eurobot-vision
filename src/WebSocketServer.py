@@ -3,6 +3,7 @@ from .OpenCvService import OpenCvService
 import logging
 import base64
 import json
+import re
 
 class WebSocketServer:
     
@@ -30,6 +31,12 @@ class WebSocketServer:
             self.openCvService.beginCalibration(self, client)
         if command == "calibration_snapshot":
             self.openCvService.calibrationSnapshot()
+        if command == "calibration_process":
+            self.openCvService.processCalibrationData(self, client, args['calibrationId'])
+        if command == "calibration_fetch_saves":
+            self.openCvService.fetchSaves(self, client)
+        if command == "calibration_fetch_save":
+            self.openCvService.fetchSave(self, client, args['calibrationId'])
         if command == "enable_markers":
             # enable marker for this specific client
             self.openCvService.enableMarkers()
@@ -39,10 +46,18 @@ class WebSocketServer:
         if command == "live":
             # create a new thread
             self.openCvService.startLiveVideo(self, client)
-        if command == "calibration_get_input_data":
-            with open(args['path'], "rb") as imageFile:
-                sent = "data:image/jpeg;base64," + base64.b64encode(imageFile.read()).decode("utf-8")
-                self.send(client, "calibrationData", sent)
+        # if command == "calibration_get_input_data":
+        #     with open(args['path'], "rb") as imageFile:
+        #         sent = "data:image/jpeg;base64," + base64.b64encode(imageFile.read()).decode("utf-8")
+        #         self.send(client, "calibrationData", sent)
+        if command == "calibration_delete_input_data":
+            frameId = str(int(args['calibrationFrameId']))
+            calibrationId = args['calibrationId']
+            if not re.compile('^[a-z0-9\-]+$').match(calibrationId):
+                print('ERR: Calibration id not match')
+                return
+            self.openCvService.deleteInputData(calibrationId, frameId)
+            
 
     def send(self, client, responseType, data = None):
         self.server.send_message(client, json.dumps({'responseType': responseType, 'data': data}))
