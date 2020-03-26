@@ -13,13 +13,13 @@ import math
 class OpenCvService:
     
     def __init__(self):
-        self.capture = cv2.VideoCapture(0)
+        self.capture = cv2.VideoCapture(3)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.capture.set(cv2.CAP_PROP_FPS, 5)
         self.dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
         self.by4dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
-        self.board = cv2.aruco.CharucoBoard_create(7, 5, 1, .8, self.dict)
+        self.board = cv2.aruco.CharucoBoard_create(7, 5, 0.02875, 0.023, self.dict) # 80% ratio between the marker size and square length
         self.liveVideoThreads = []
         self.saveNextFrame = False
         self.markers = False
@@ -32,7 +32,7 @@ class OpenCvService:
         self.pauseStream = False
         self.cameraConfig = {}
         self.parameters = cv2.aruco.DetectorParameters_create()
-        self.markerSize = 3.1 # in centimeters
+        self.markerSize = 0.031 # in centimeters
         self.idToFind = 8
         
         self.RFlip = np.zeros((3,3), dtype=np.float32)
@@ -40,7 +40,7 @@ class OpenCvService:
         self.RFlip[1,1] = -1.0
         self.RFlip[2,2] = -1.0
         
-        self.loadCameraConfig("1c732175-cb95-454e-9880-bc4765cc7c12")
+        self.loadCameraConfig("7adf47f3-a696-4d65-8d87-07042dab0848")
 
         
     # Checks if a matrix is a valid rotation matrix.
@@ -93,53 +93,98 @@ class OpenCvService:
                         formatedCorner.append([int(coordinate[0]), int(coordinate[1])])
                     formatedCorners.append(formatedCorner)
 
+        markers = None
+        position = None
+        dist = None
         if self.position:
             corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame, self.by4dict, parameters=self.parameters, cameraMatrix=self.cameraConfig['cameraMatrix'], distCoeff=self.cameraConfig['distortionCoefficients'])
-            if ids is not None and ids[1] == self.idToFind:
-                #-- ret = [rvec, tvec, ?]
-                #-- array of rotation and position of each marker in camera frame
-                #-- rvec = [[rvec_1], [rvec_2], ...]    attitude of the marker respect to camera frame
-                #-- tvec = [[tvec_1], [tvec_2], ...]    position of the marker in camera frame
-                ret = cv2.aruco.estimatePoseSingleMarkers(corners, self.markerSize, self.cameraConfig['cameraMatrix'], self.cameraConfig['distortionCoefficients'])
+            #print(ids, corners)
+            markers = []
+            if ids is not None:
+                formatedIds = []
+                if ids is not None:
+                    for tag in ids:
+                        formatedIds.append(int(tag[0]))
+                formatedCorners = []
+                if corners != None:
+                    for tag in corners:
+                        formatedCorner = []
+                        for coordinate in tag[0]:
+                            formatedCorner.append([int(coordinate[0]), int(coordinate[1])])
+                        formatedCorners.append(formatedCorner)
+                for markerId in ids:
+                    markerCorners = [corners[np.where(ids == markerId)[0][0]]]
+                    #-- ret = [rvec, tvec, ?]
+                    #-- array of rotation and position of each marker in camera frame
+                    #-- rvec = [[rvec_1], [rvec_2], ...]    attitude of the marker respect to camera frame
+                    #-- tvec = [[tvec_1], [tvec_2], ...]    position of the marker in camera frame
+                    ret = cv2.aruco.estimatePoseSingleMarkers(markerCorners, self.markerSize, self.cameraConfig['cameraMatrix'], self.cameraConfig['distortionCoefficients'])
 
-                #-- Unpack the output, get only the first
-                rvec, tvec = ret[0][0,0,:], ret[1][0,0,:]
-                
-                print('rvec', rvec)
-                print('tvec', tvec)
-
-                #-- Draw the detected marker and put a reference frame over it
-                cv2.aruco.drawDetectedMarkers(frame, corners)
-                cv2.aruco.drawAxis(frame, self.cameraConfig['cameraMatrix'], self.cameraConfig['distortionCoefficients'], rvec, tvec, 10)
-
-                #-- Print the tag position in camera frame
-                str_position = "MARKER Position x=%4.0f  y=%4.0f  z=%4.0f"%(tvec[0], tvec[1], tvec[2])
-                print(str_position)
-
-                #-- Obtain the rotation matrix tag->camera
-                R_ct    = np.matrix(cv2.Rodrigues(rvec)[0])
-                R_tc    = R_ct.T
-
-                #-- Get the attitude in terms of euler 321 (Needs to be flipped first)
-                roll_marker, pitch_marker, yaw_marker = self.rotationMatrixToEulerAngles(self.RFlip*R_tc)
-
-                #-- Print the marker's attitude respect to camera frame
-                str_attitude = "MARKER Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_marker),math.degrees(pitch_marker),
-                                    math.degrees(yaw_marker))
-                print(str_attitude)
-                
-                #-- Now get Position and attitude f the camera respect to the marker
-                pos_camera = -R_tc*np.matrix(tvec).T
-
-                str_position = "CAMERA Position x=%4.0f  y=%4.0f  z=%4.0f"%(pos_camera[0], pos_camera[1], pos_camera[2])
-                print(str_position)
-
-                #-- Get the attitude of the camera respect to the frame
-                roll_camera, pitch_camera, yaw_camera = self.rotationMatrixToEulerAngles(self.RFlip*R_tc)
-                str_attitude = "CAMERA Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_camera),math.degrees(pitch_camera),
-                                    math.degrees(yaw_camera))
-                print(str_attitude)
+                    #-- Unpack the output, get only the first
+                    rvec, tvec = ret[0][0,0,:], ret[1][0,0,:]
                     
+                    # print('rvec', rvec)
+                    # print('tvec', tvec)
+
+                    #-- Draw the detected marker and put a reference frame over it
+                    cv2.aruco.drawDetectedMarkers(frame, markerCorners)
+                    cv2.aruco.drawAxis(frame, self.cameraConfig['cameraMatrix'], self.cameraConfig['distortionCoefficients'], rvec, tvec, 0.08)
+
+                    #-- Print the tag position in camera frame
+                    str_position = "MARKER Position x=%4.0f  y=%4.0f  z=%4.0f"%(tvec[0], tvec[1], tvec[2])
+                    #print(str_position)
+
+                    # #-- Obtain the rotation matrix tag->camera
+                    # R_ct    = np.matrix(cv2.Rodrigues(rvec)[0])
+                    # R_tc    = R_ct.T
+
+                    # #-- Get the attitude in terms of euler 321 (Needs to be flipped first)
+                    # roll_marker, pitch_marker, yaw_marker = self.rotationMatrixToEulerAngles(self.RFlip*R_tc)
+
+                    # #-- Print the marker's attitude respect to camera frame
+                    # str_attitude = "MARKER Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_marker),math.degrees(pitch_marker),
+                    #                     math.degrees(yaw_marker))
+                    # print(str_attitude)
+                    
+                    # #-- Now get Position and attitude f the camera respect to the marker
+                    # pos_camera = -R_tc*np.matrix(tvec).T
+
+                    # str_position = "CAMERA Position x=%4.0f  y=%4.0f  z=%4.0f"%(pos_camera[0], pos_camera[1], pos_camera[2])
+                    # print(str_position)
+
+                    # #-- Get the attitude of the camera respect to the frame
+                    # roll_camera, pitch_camera, yaw_camera = self.rotationMatrixToEulerAngles(self.RFlip*R_tc)
+                    # str_attitude = "CAMERA Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_camera),math.degrees(pitch_camera),
+                    #                     math.degrees(yaw_camera))
+                    # print(str_attitude)
+                    tvecParsed = []
+                    rvecParsed = []
+                    for vec in tvec:
+                        tvecParsed.append(vec)
+                    for vec in rvec:
+                        rvecParsed.append(vec)
+                    # print('tvec', tvecParsed)
+                    # print('rvec', rvecParsed)
+                    # print('markerId', markerId)
+                    markerId = int(markerId[0])
+                    markers.append({'tvec': tvecParsed, 'rvec': rvecParsed, 'id': markerId})
+            
+            dist = 0
+            position = []
+            if len(markers) == 2:
+                dist = math.sqrt((markers[0]['tvec'][0] - markers[1]['tvec'][0])**2 + (markers[0]['tvec'][1] - markers[1]['tvec'][1])**2 + (markers[0]['tvec'][2] - markers[1]['tvec'][2])**2)
+                for m in filter(lambda marker: marker['id'] == 42, markers):
+                    originMarker = m
+                for m in filter(lambda marker: marker['id'] == 8, markers):
+                    mobileMarker = m
+                position = [
+                    mobileMarker['tvec'][0] - originMarker['tvec'][0],
+                    math.sqrt((mobileMarker['tvec'][1] - originMarker['tvec'][1])**2 + (mobileMarker['tvec'][2] - originMarker['tvec'][2])**2)
+                ]
+                #math.sqrt((mobileMarker['tvec'][1] - originMarker['tvec'][1])**2 + (mobileMarker['tvec'][2] - originMarker['tvec'][2])**2)
+                #mobileMarker['tvec'][1] - originMarker['tvec'][1]
+                #print(position)
+        
         retval, buffer = cv2.imencode('.jpg', frame)
         
         data = "data:image/jpeg;base64," + str(base64.b64encode(buffer).decode("utf-8"))
@@ -160,7 +205,7 @@ class OpenCvService:
             }
             self.webSocketService.send(self.calibrationClient, 'calibrationSnapshot', snapshotObject)
         
-        return [ data, [formatedCorners, formatedIds] ]
+        return [ data, {'formatedCorners': formatedCorners, 'formatedIds': formatedIds, 'markers': markers, 'dist': dist, 'position': position} ]
     
     def liveVideoLoop(self):
         currentThread = threading.currentThread()
@@ -183,6 +228,7 @@ class OpenCvService:
         self.webSocketService = ws
         self.liveVideoClient = client
         self.markers = False
+        self.position = False
         self.stopClientLiveThread(client)
         liveVideoThread = threading.Thread(target=self.liveVideoLoop)
         self.liveVideoThreads.append((client['id'], liveVideoThread))
@@ -197,12 +243,12 @@ class OpenCvService:
         self.markers = True
         
     def enablePosition(self):
-        print('> OPENCV: Position disabled!')
-        self.position = False
-        
-    def disablePosition(self):
         print('> OPENCV: Position enabled!')
         self.position = True
+        
+    def disablePosition(self):
+        print('> OPENCV: Position disabled!')
+        self.position = False
         
     def loadCameraConfig(self, calibrationId):
         f = open(self.calibrationPath + '/calibration_' + calibrationId + '/output.json')

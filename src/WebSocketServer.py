@@ -46,7 +46,7 @@ class WebSocketServer:
         if command == "enable_position":
             # enable marker for this specific client
             self.openCvService.enablePosition()
-        if command == "enable_position":
+        if command == "disable_position":
             # enable marker for this specific client
             self.openCvService.disablePosition()
         if command == "live":
