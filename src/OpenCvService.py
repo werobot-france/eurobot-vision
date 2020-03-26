@@ -95,6 +95,7 @@ class OpenCvService:
 
         markers = None
         position = None
+        attitude = None
         dist = None
         if self.position:
             corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame, self.by4dict, parameters=self.parameters, cameraMatrix=self.cameraConfig['cameraMatrix'], distCoeff=self.cameraConfig['distortionCoefficients'])
@@ -142,7 +143,7 @@ class OpenCvService:
                     # roll_marker, pitch_marker, yaw_marker = self.rotationMatrixToEulerAngles(self.RFlip*R_tc)
 
                     # #-- Print the marker's attitude respect to camera frame
-                    # str_attitude = "MARKER Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_marker),math.degrees(pitch_marker),
+                    #str_attitude = "MARKER Attitude r=%4.0f  p=%4.0f  y=%4.0f"%(math.degrees(roll_marker),math.degrees(pitch_marker),
                     #                     math.degrees(yaw_marker))
                     # print(str_attitude)
                     
@@ -181,6 +182,13 @@ class OpenCvService:
                     mobileMarker['tvec'][0] - originMarker['tvec'][0],
                     math.sqrt((mobileMarker['tvec'][1] - originMarker['tvec'][1])**2 + (mobileMarker['tvec'][2] - originMarker['tvec'][2])**2)
                 ]
+                rollMarker, pitchMarker, yawMarker = self.rotationMatrixToEulerAngles(self.RFlip*(np.matrix(cv2.Rodrigues(np.array(mobileMarker['rvec']))[0]).T))
+                # attitude = [
+                #     math.degrees(rollMarker),
+                #     math.degrees(pitchMarker),
+                #     math.degrees(yawMarker)
+                # ]
+                attitude = math.degrees(yawMarker)
                 #math.sqrt((mobileMarker['tvec'][1] - originMarker['tvec'][1])**2 + (mobileMarker['tvec'][2] - originMarker['tvec'][2])**2)
                 #mobileMarker['tvec'][1] - originMarker['tvec'][1]
                 #print(position)
@@ -205,7 +213,7 @@ class OpenCvService:
             }
             self.webSocketService.send(self.calibrationClient, 'calibrationSnapshot', snapshotObject)
         
-        return [ data, {'formatedCorners': formatedCorners, 'formatedIds': formatedIds, 'markers': markers, 'dist': dist, 'position': position} ]
+        return [ data, {'formatedCorners': formatedCorners, 'formatedIds': formatedIds, 'markers': markers, 'dist': dist, 'position': position, 'attitude': attitude} ]
     
     def liveVideoLoop(self):
         currentThread = threading.currentThread()
