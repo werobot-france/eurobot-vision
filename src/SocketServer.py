@@ -4,7 +4,7 @@ import socket
 import uuid
 
 class SocketServer:
-    
+ 
     def __init__(self, host = '0.0.0.0', port = 8082):
         self.host = host
         self.port = port
@@ -12,7 +12,7 @@ class SocketServer:
         self.server.bind((host, port))
         self.connexions = {}
         self.events = event_emitter.EventEmitter()
-        
+
     def loop(self):
         self.server.listen()
         while True:
@@ -25,16 +25,13 @@ class SocketServer:
                 data = conn.recv(32).decode("utf-8").replace("\n", "")
                 if data == '': break
                 self.events.emit(data, connId)
-                
             print("Deconnexion")
             del self.connexions[connId]
-                
-            
+
     def start(self):
         self.thread = threading.Thread(target=self.loop)
         self.thread.start()
-        
+
     def sendLine(self, connId, message):
         print(len(self.connexions))
         self.connexions[connId].send((message + "\n").encode('utf8'))
-        
