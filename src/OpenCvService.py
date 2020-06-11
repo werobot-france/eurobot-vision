@@ -33,7 +33,7 @@ class OpenCvService:
         self.pauseStream = False
         self.cameraConfig = {}
         self.parameters = cv2.aruco.DetectorParameters_create()
-        self.mobileMarkerSize = 0.070 # in meters
+        self.mobileMarkerSize = 0.065 # in meters
         self.originMarkerSize = 0.100
         self.idToFind = 9
         
@@ -45,7 +45,9 @@ class OpenCvService:
         # old chez matthieu: 85a35b28-5578-4946-9278-8e49c8474b77
         # douaires prise 1: 8417a860-9d4c-4270-8c85-397b1b1bb8cd
         # douaires prise 2 (écran): 48f86aea-2d80-4974-b365-1368e2584da9
-        self.loadCameraConfig("48f86aea-2d80-4974-b365-1368e2584da9")
+        # douaires prise 3 (écran de momo le nouveau ordi 29/05/2020): 1853478a-a321-44ba-81ef-16d99e939e8f
+        # wtf calibration 1c732175-cb95-454e-9880-bc4765cc7c12
+        self.loadCameraConfig("1c732175-cb95-454e-9880-bc4765cc7c12")
 
         
     # Checks if a matrix is a valid rotation matrix.
@@ -426,6 +428,12 @@ class OpenCvService:
             frame = cv2.imread(im)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, self.dict)
+            
+            if len(ids) == 0:
+              print("    - Didn't found any tag in this image")
+            else:
+              print("    - Found", len(ids), "tags")
+            print("    - ", ids)
 
             if len(corners)>0:
                 # SUB PIXEL DETECTION
@@ -439,7 +447,7 @@ class OpenCvService:
                     allCorners.append(res2[1])
                     allIds.append(res2[2])
                     
-            print("    => Processing image " + im + ", corners: " + len(corners) + ", ids:", ids)
+            print("    => Processing image " + im + ", corners:", len(corners) , ", ids:", ids)
             decimator+=1
 
         imsize = gray.shape
